@@ -2,6 +2,7 @@ package scalargo_test
 
 import (
 	"encoding/json"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -34,6 +35,7 @@ func Test_ShouldCallOverrideHandler_WhenProvider(t *testing.T) {
 
 func Test_NewV2(t *testing.T) {
 	const specURL = "https://cdn.jsdelivr.net/npm/@scalar/galaxy/dist/latest.yaml"
+	specFS := os.DirFS("./data/loader")
 	testCases := []struct {
 		name      string
 		inputOpts []scalargo.Option
@@ -44,22 +46,35 @@ func Test_NewV2(t *testing.T) {
 			name:      "should return error when no option is provided",
 			inputOpts: []scalargo.Option{},
 			asserter:  func(t *testing.T, got html) { require.Equal(t, html{}, got) },
-			wantError: "SpecURL or SpecDirectory must be configured",
+			wantError: "SpecURL or SpecDirectory or SpecFS must be configured",
 		},
 		{
 			name:      "should render html containing script with spec URL when spec URL is configured",
 			inputOpts: []scalargo.Option{scalargo.WithSpecURL(specURL)},
 			asserter: func(t *testing.T, got html) {
 				require.Empty(t, got.spec)
-				require.Equal(t, "https://cdn.jsdelivr.net/npm/@scalar/galaxy/dist/latest.yaml", got.specURL)
+				require.Equal(
+					t,
+					"https://cdn.jsdelivr.net/npm/@scalar/galaxy/dist/latest.yaml",
+					got.specURL,
+				)
 			},
 		},
 		{
-			name:      "should render html with inline spec when spec directory is configured",
-			inputOpts: []scalargo.Option{scalargo.WithSpecDir("./data/loader"), scalargo.WithBaseFileName("pet-store.yml")},
+			name: "should render html with inline spec when spec directory is configured",
+			inputOpts: []scalargo.Option{
+				scalargo.WithSpecDir("./data/loader"),
+				scalargo.WithBaseFileName("pet-store.yml"),
+			},
 			asserter: func(t *testing.T, got html) {
 				require.Empty(t, got.specURL)
-				require.True(t, strings.HasPrefix(got.spec, `{"openapi":"3.0.0","info":{"title":"Swagger Petstore",`))
+				require.True(
+					t,
+					strings.HasPrefix(
+						got.spec,
+						`{"openapi":"3.0.0","info":{"title":"Swagger Petstore",`,
+					),
+				)
 			},
 		},
 		{
@@ -83,6 +98,23 @@ func Test_NewV2(t *testing.T) {
 				}, got.configuration)
 			},
 		},
+		{
+			name: "should render html with fs spec when spec fs is configured",
+			inputOpts: []scalargo.Option{
+				scalargo.WithSpecFS(specFS),
+				scalargo.WithBaseFileName("pet-store.yml"),
+			},
+			asserter: func(t *testing.T, got html) {
+				require.Empty(t, got.specURL)
+				require.True(
+					t,
+					strings.HasPrefix(
+						got.spec,
+						`{"openapi":"3.0.0","info":{"title":"Swagger Petstore",`,
+					),
+				)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -103,11 +135,13 @@ func Test_NewV2(t *testing.T) {
 
 type asserter func(t *testing.T, got html)
 
-var titleMatcher = regexp.MustCompile(".*<title>(.*)</title>.*")
-var overrideCSSMatcher = regexp.MustCompile(".*<style>(.*)</style>.*")
-var configurationMatcher = regexp.MustCompile(`.*data-configuration="(.*)".*`)
-var specURLMatcher = regexp.MustCompile(`.*id="api-reference".*data-url="(.*?[^\\])".*`)
-var specMatcher = regexp.MustCompile(`.*<script.*id="api-reference".*>(.*)</script>.*`)
+var (
+	titleMatcher         = regexp.MustCompile(".*<title>(.*)</title>.*")
+	overrideCSSMatcher   = regexp.MustCompile(".*<style>(.*)</style>.*")
+	configurationMatcher = regexp.MustCompile(`.*data-configuration="(.*)".*`)
+	specURLMatcher       = regexp.MustCompile(`.*id="api-reference".*data-url="(.*?[^\\])".*`)
+	specMatcher          = regexp.MustCompile(`.*<script.*id="api-reference".*>(.*)</script>.*`)
+)
 
 type html struct {
 	title         string

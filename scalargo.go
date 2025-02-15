@@ -3,6 +3,7 @@ package scalargo
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/bdpiprava/scalar-go/loader"
@@ -88,11 +89,17 @@ func (o *Options) GetSpecScript() (string, error) {
 		), nil
 	}
 
-	if strings.TrimSpace(o.SpecDirectory) == "" {
-		return "", fmt.Errorf(`SpecURL or SpecDirectory must be configured`)
+	specFS := o.SpecFS
+
+	if strings.TrimSpace(o.SpecDirectory) != "" {
+		specFS = os.DirFS(strings.TrimSpace(o.SpecDirectory))
 	}
 
-	spec, err := loader.LoadWithName(o.SpecDirectory, o.BaseFileName)
+	if specFS == nil {
+		return "", fmt.Errorf(`SpecURL or SpecDirectory or SpecFS must be configured`)
+	}
+
+	spec, err := loader.LoadWithNameFS(specFS, o.BaseFileName)
 	if err != nil {
 		return "", err
 	}

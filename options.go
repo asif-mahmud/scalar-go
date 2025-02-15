@@ -2,6 +2,7 @@ package scalargo
 
 import (
 	"fmt"
+	"io/fs"
 	"strings"
 
 	"github.com/bdpiprava/scalar-go/model"
@@ -42,6 +43,7 @@ type Options struct {
 	SpecModifier   SpecModifier
 	SpecDirectory  string
 	SpecURL        string
+	SpecFS         fs.FS
 }
 
 type Option func(*Options)
@@ -195,5 +197,12 @@ func WithSpecDir(specDir string) func(*Options) {
 func WithSpecURL(specURL string) func(*Options) {
 	return func(o *Options) {
 		o.SpecURL = specURL
+	}
+}
+
+// WithSpecFS read spec from an fs.FS instance
+func WithSpecFS(specFS fs.FS) func(*Options) {
+	return func(o *Options) {
+		o.SpecFS = specFS
 	}
 }
